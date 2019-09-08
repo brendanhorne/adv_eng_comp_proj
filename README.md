@@ -37,50 +37,40 @@ Joel, Suret, Nader, Shamal
 Discuss project brief and allocate tasks.
 ### Minutes
 Breakdown work from pg19 of Lecture 10 FLOW CHART
+
 Ryan to do Read and Store part of code.
+
 Phillip and Brendan to do CalculateElement Stiffness Matricies and assemble
-Global Stiffness Matrix
+Global Stiffness Matrix.
+
 Kelvin Read and Store Boundary Conditions Data Data and form the column
 and row elimination matrix.
+
 Ben Read and Store Mass Data, number of lumped masses. Which joint, 
 the values of the mass. Form Mass Matrix.
-Job Read and Store Damping Data. Mass propostional damping factor, am. 
-Stiffness proportional damping factor ak. Form Damping Matrix
+
+Job Read and Store Damping Data. Mass propostional damping factor, and
+Stiffness proportional damping factor and Form Damping Matrix.
+
 Joel Read external time dependent load and calculate effective load vector.
+
 Suret and Shamal Solve vi+1 after imposing B.C. SUPT ... using Gauss elimination.
+
 Nader Update velocity vi+1 and acceleration...
 
+## 4/9/2019
+### Attending
+Kelvin, Joel, Brendan
+### Not Attend
+Ben, Job, Phillip, Suret, Nader, Shamal
+### Agenda
+Discuss presentation tasks
+### Minutes
+Presentation requries slides. Brendan will make some slides to go with the 
+presentation.
 
-# Team Tasks
-## Joel
-1. Search for the earthquake data and research the inputs required for 
-software.
-## Kelvin
-1. Study the requirements for the group project and will be the first point
-of contact for interpreting scope.
-2. Responsible for communicating milestones (due dates) and monitoring 
-progress of development.
-## Phillip
-1. Search for the earthquake data and research the inputs required for 
-software.
-## Job
-## Ben
-1. Model the structure in SAP2000; responsible for incrementally complex 
-verification models as we progress in developing our code. 
-2. 
-3. This is important because we need to know that that models that we are 
-basing our Matlab program on are correct.
-## Brendan
-1. Develop a skeleton of the code structure and divide work amoung other 
-members. 
-## Ryan
-## Suret 
-## Nader
-## Shamal
+Kelvin to organise a meeting to prepare the presentation before the lecture.
 
-# Development Log
-Use CSV format (comma separated values) to ease transfer to excel format 
-when submitting assignment.
-Date:, Activity:, Done by:, Checked by:, Tentative hours:, Additional notes:
-22/8/2019, Made this log, Brendan, No one yet, 0.25, None
+
+
 
