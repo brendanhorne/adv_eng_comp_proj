@@ -4,22 +4,22 @@ nodes = [% node ID, x-coordinate, y-coordinate, z-rotation, x-force, y-force, z-
             2 3 0 0 0 0 75;
             3 4.5 -2 0 0 0 0];
 
-boundary_conditions = [% node ID, x-position-fixity, y-position-fixity, z-rotation-fixity
-            1 1 1 1
-            3 1 1 1];
-
 elements = [% element ID, start node, end node, x-force, y-force, z-moment, E, I, A
             1, 1, 2 0 -3 -1.5 0 -3 1.5 290e6 0.055 0.16;
             2, 2, 3 0 0 0 0 0 0 290e6 0.028 0.12];
 
-E = elements(1:end,10);
+E = elements(1:end,10); 
 I = elements(1:end,11);
 A = elements(1:end,12);
+
+boundary_conditions = [% node ID, x-position-fixity, y-position-fixity, z-rotation-fixity
+            1 1 1 1
+            3 1 1 1];
 
 boundary_conditions_only = boundary_conditions(1:end,2:end);
 number_possible_fixed_dof = numel(boundary_conditions_only);
 boundary_conditions_list = reshape(boundary_conditions_only,number_possible_fixed_dof,1);
-fixed_only_boundary_condition_list = ismember(ones(number_possible_fixed_dof,1),boundary_conditions_list);
+fixed_only_boundary_condition_list = ismember(ones(number_possible_fixed_dof,1),boundary_conditions_list); % doesn't remove 0 from list
 number_of_fixed_dof = numel(fixed_only_boundary_condition_list);
 fixed_dof = zeros(number_of_fixed_dof,1);
 dof_per_node = 3;
@@ -56,22 +56,23 @@ for e = 1:size(elements,1)
     Ke = Tt * Ke_dash * T;
     Kg(dof,dof) = Kg(dof, dof) + Ke;                
 end
-
+% remove rows and columns for fixed dof
 Kg = Kg(~ismember(1:size(Kg,1),fixed_dof),~ismember(1:size(Kg,1),fixed_dof));
-
 forces=zeros(size(nodes,1)*dof_per_node,1);
-
+% load in forces from nodes
 for force=1:size(nodes,1)
     forces(force*dof_per_node-2,1)=nodes(force,5);
     forces(force*dof_per_node-1,1)=nodes(force,6);
     forces(force*dof_per_node,1)=nodes(force,7);
 end
 
+% load in forces from elements
 for e = 1:size(elements)
     [dof] = getElementDegreesOfFreedom(e,elements,dof_per_node);
     forces(dof) = forces(dof) + reshape(elements(e,4:9),2*dof_per_node,1);
 end
 
+% remove rows and columns for fixed dof
 analysis_forces=forces(~ismember(1:size(forces,1),fixed_dof),1);
 
 displacements = Kg\analysis_forces;
@@ -82,6 +83,7 @@ element_displacements = zeros(size(elements,1),2*dof_per_node); %x1, y1, z1, x2,
 element_local_displacements = zeros(size(elements,1),2*dof_per_node);
 element_loads = zeros(size(elements,1),2*dof_per_node);
 
+% add local displacements to elements
 for e = 1:size(elements,1)
     [dof] = getElementDegreesOfFreedom(e,elements,dof_per_node);
     [L,theta] = getElementLengthAndAngle(e,elements,nodes);
