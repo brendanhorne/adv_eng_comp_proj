@@ -71,6 +71,18 @@ presentation.
 
 Kelvin to organise a meeting to prepare the presentation before the lecture.
 
-
-
-
+## 18/9/2019
+### Attending
+Joel, Phillip, Ben, Brendan, Nadar
+### Not Attend
+Ryan, Suret, Job, Shamal, Kelvin
+### Agenda
+Discuss project brief and allocate tasks.
+### Minutes
+Progress update. Brendan showed the frame element example built based on
+the example in supplementary notes 2 and the simple column modelled in 
+SAP2000 with the earthquake (time history) load applied. Ben showed a full
+model of the structure in SAP but needed help getting the correct materials
+and section properties. Job did not attend however, contributed a sumamry 
+of his research so far on damping which was quite informative.
+Others are still in the research phase of their tasks. 

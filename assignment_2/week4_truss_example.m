@@ -2,20 +2,24 @@ clc
 clearvars
 %% Geometry Information
 %Node information: Node No.  x-coord, y-coord, x-force, y-force
-node_infor=[1, 0, 0, 0, 0;
-            2, 1, 0, 0, -1000;
-            3, 0, 1, 0, 0];
-
+%Node information: Node No., x-coord, x-force,
+node_infor=[1, 0, 0;
+            2, 2, 0;
+            3, 4, 10000;
+            4, 6, 0;
+            5, 8, -20000;
+            6, 10, 0];
+        
 %Element information (Connectivity table)
 %Element no, starting node, ending node
 element_infor=[1, 1, 2;
-               2, 1, 3;
-               3, 2, 3];
-
+               2, 2, 3;
+               3, 3, 4;
+               4, 4, 5;
+               5, 5, 6];
 %Boundary condition
 %BC=[Node no, x-direction movement, y-direction movement] 1-fix, 0-free
-BC=[1, 1, 1;
-    3, 1, 0];
+BC=[1, 1];
 
 fix_dof=[];
 for pp=1:size(BC,1)
