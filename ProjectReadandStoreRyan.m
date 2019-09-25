@@ -69,9 +69,9 @@ elements = zeros(296,4);
     %Section Properties = [ section number, E, I, A]; (1 = column, 2= beam, 3 = shear
     %wall) 
     
-    sec_props = [1, 1, Ic, 0.16;
-                 2, 1, Ib, 0.2025;
-                 3, 1, Is, 1];
+    sec_props = [1, E, Ic, 0.16;
+                 2, E, Ib, 0.2025;
+                 3, E, Is, 1];
                 
 
     csvwrite('nodedata.csv',nodes)
