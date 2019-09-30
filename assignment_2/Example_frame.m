@@ -99,7 +99,7 @@ analysis_forces=forces(~ismember(1:size(forces,1),fixed_dof),1);
 % solve the displacements
 displacements = Kg\analysis_forces;
 node_displacements = zeros(total_dof,1);
-node_displacements(free_dof) = node_displacements(free_dof) + displacements;
+node_displacements(free_dof) = node_displacements(free_dof) + displacements
 
 % transform displacements for elements into local
 element_displacements = zeros(size(elements,1),2*dof_per_node); %x1, y1, z1, x2, y2, z2 displacments
@@ -123,7 +123,7 @@ for e = 1:size(elements,1)
     load_conversion_matrix = [1 1 -1 1 -1 1];
     element_loads(e,1:2*dof_per_node) = element_loads(e,1:2*dof_per_node).*load_conversion_matrix;
 end
-
+element_loads
 
 % FUNCTION SPACE
 
