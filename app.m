@@ -13,7 +13,7 @@ fprintf('%-12d %-12d %-12d %-12d %-12d %-12d %-12d \r\n',transpose(nodes));
 fprintf('\r\n');
 
 elements = [% element ID, start node, end node, x1-force, y1-force, z1-moment, x2-force, y2-force, z2-moment, E, I, A, rho
-            1 1 2 0 0 0 0 0 0 200e9 8.33e-6 0.01, 3e3];
+            1 1 2 0 0 0 1000 0 0 200e9 8.33e-6 0.01, 3e3];
 
 fprintf('ELEMENTS \r\n');
 fprintf('%-12s %-12s %-12s %-12s %-12s %-12s %-12s %-12s %-12s %-12s %-12s %-12s \r\n','Element id','start node', 'end node','N1(N)','V1(N)','M1(Nm)','N2(N)','V2(N)','M2(Nm)','E(Pa)','I(m^4)','A(m^2)');
@@ -68,7 +68,7 @@ for bc = 1:size(boundary_conditions,1)
 end
 
 % SELF WEIGHT MATRIX
-sw = [1 0 0];
+sw = [0 -1 0];
 
 % determine the free dofs
 fixed_dof = sort(fixed_dof);
@@ -136,7 +136,7 @@ Me = zeros(dof_per_node *2);
 for e = 1:size(elements)
     [dof] = getElementDegreesOfFreedom(e,elements,dof_per_node);
     [L, theta] = getElementLengthAndAngle(e,elements,nodes);
-    for d = 1:(dof_per_node*2);
+    for d = 1:(dof_per_node*2)
         Me(d,d) = A(e) * L * rho(e) * 0.5;
     end    
     M(dof,dof) = M(dof,dof) + Me;
@@ -156,9 +156,9 @@ node_displacements = zeros(total_dof,1);
 node_displacements(free_dof) = node_displacements(free_dof) + displacements;
 
 fprintf('NODE DISPLACEMENTS: \r\n');
-fprintf('%-8s %-8s %-8s \r\n','x(mm)','y(mm)','z(mm)');
+fprintf('%-8s %-8s %-8s \r\n','x(m)','y(m)','z(rad)');
 output = reshape(transpose(node_displacements),(total_dof/3),3);
-fprintf('%-8.3g %-8.3g %-8.3g \r\n',output.*1000);
+fprintf('%-8.3g %-8.3g %-8.3g \r\n',output);
 fprintf('\r\n');
 
 % transform displacements for elements into local
@@ -183,7 +183,7 @@ for e = 1:size(elements,1)
     load_conversion_matrix = [1 1 -1 1 -1 1];
     element_loads(e,1:2*dof_per_node) = element_loads(e,1:2*dof_per_node).*load_conversion_matrix;
 end
-
+element_loads
 fclose('all');
 
 % FUNCTION SPACE
