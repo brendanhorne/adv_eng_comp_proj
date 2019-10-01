@@ -147,6 +147,9 @@ output = transpose(M);
 fprintf('%-8.3g %-8.3g %-8.3g %-8.3g %-8.3g %-8.3g \r\n',output);
 fprintf('\r\n');
 
+% Damping matrix
+C = eye(total_dof).*0.05
+
 % remove rows and columns for fixed dof
 analysis_forces=forces(~ismember(1:size(forces,1),fixed_dof),1);
 
