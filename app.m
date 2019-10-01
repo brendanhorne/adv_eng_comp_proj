@@ -104,8 +104,7 @@ for i = 1:total_dof
 end
 fprintf('\r\n');
 
-% remove rows and columns for fixed dof
-Kg = Kg(~ismember(1:size(Kg,1),fixed_dof),~ismember(1:size(Kg,1),fixed_dof));
+
 
 forces=zeros(size(nodes,1)*dof_per_node,1);
 
@@ -152,6 +151,12 @@ fprintf('\r\n');
 
 % Damping matrix
 C = eye(total_dof).*0.05
+
+% Effective Stiffness Matrix
+Kge = Kg +(2/h)*C + (4/h^2)*M;
+
+% remove rows and columns for fixed dof
+Kg = Kg(~ismember(1:size(Kg,1),fixed_dof),~ismember(1:size(Kg,1),fixed_dof));
 
 % remove rows and columns for fixed dof
 analysis_forces=forces(~ismember(1:size(forces,1),fixed_dof),1);
