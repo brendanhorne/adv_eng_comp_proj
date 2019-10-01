@@ -141,7 +141,10 @@ for e = 1:size(elements)
     end    
     M(dof,dof) = M(dof,dof) + Me;
 end
-
+h = 0.01;
+udotdot = 1;
+udot = udotdot*h;
+u = udot * h;
 fprintf('MASS MATRIX: \r\n');
 output = transpose(M);
 fprintf('%-8.3g %-8.3g %-8.3g %-8.3g %-8.3g %-8.3g \r\n',output);
