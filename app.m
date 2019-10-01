@@ -13,7 +13,7 @@ fprintf('%-12d %-12d %-12d %-12d %-12d %-12d %-12d \r\n',transpose(nodes));
 fprintf('\r\n');
 
 elements = [% element ID, start node, end node, x1-force, y1-force, z1-moment, x2-force, y2-force, z2-moment, E, I, A, rho
-            1 1 2 0 0 0 1000 0 0 200e9 8.33e-6 0.01, 3e3];
+            1 1 2 0 0 0 0 0 0 200e9 8.33e-6 0.01, 3e3];
 
 fprintf('ELEMENTS \r\n');
 fprintf('%-12s %-12s %-12s %-12s %-12s %-12s %-12s %-12s %-12s %-12s %-12s %-12s \r\n','Element id','start node', 'end node','N1(N)','V1(N)','M1(Nm)','N2(N)','V2(N)','M2(Nm)','E(Pa)','I(m^4)','A(m^2)');
@@ -104,9 +104,6 @@ for i = 1:total_dof
 end
 fprintf('\r\n');
 
-% remove rows and columns for fixed dof
-Kg = Kg(~ismember(1:size(Kg,1),fixed_dof),~ismember(1:size(Kg,1),fixed_dof));
-
 forces=zeros(size(nodes,1)*dof_per_node,1);
 
 % load in forces from nodes
@@ -141,20 +138,30 @@ for e = 1:size(elements)
     end    
     M(dof,dof) = M(dof,dof) + Me;
 end
+
 h = 0.01;
 udotdot = 1;
 udot = udotdot*h;
 u = udot * h;
+
 fprintf('MASS MATRIX: \r\n');
 output = transpose(M);
 fprintf('%-8.3g %-8.3g %-8.3g %-8.3g %-8.3g %-8.3g \r\n',output);
 fprintf('\r\n');
 
 % Damping matrix
-C = eye(total_dof).*0.05
+am = 0.05;
+ak = 0.05;
+C = M.*0.05 + Kg.*0.05
+
+% assemble the force matrix
+P = forces + C.*(2/h*u + udot)+ M.*(4/(h^2)*u + 4/h*udot + udotdot)
 
 % remove rows and columns for fixed dof
-analysis_forces=forces(~ismember(1:size(forces,1),fixed_dof),1);
+Kg = Kg(~ismember(1:size(Kg,1),fixed_dof),~ismember(1:size(Kg,1),fixed_dof));
+
+% remove rows and columns for fixed dof
+analysis_forces=P(~ismember(1:size(forces,1),fixed_dof),1);
 
 % solve the displacements
 displacements = Kg\analysis_forces;
