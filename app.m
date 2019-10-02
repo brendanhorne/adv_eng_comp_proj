@@ -8,28 +8,13 @@ nodes = [% node ID, x-coordinate, y-coordinate, z-rotation, x-force, y-force, z-
             1 0 0 0 0 0 0;
             2 0 1 0 0 0 0];
 
-% fprintf('NODES \r\n');
-% fprintf('%-12s %-12s %-12s %-12s %-12s %-12s %-12s \r\n','Node id','x-cord(m)', 'y-cord(m)','z-rot(rad)','x-force(N)','y-force(N)','z-moment(Nm)');
-% fprintf('%-12d %-12d %-12d %-12d %-12d %-12d %-12d \r\n',transpose(nodes));
-% fprintf('\r\n');
 elements_out = fopen('data/single_column/element_forces.csv','w');
 fprintf(elements_out,'delta_t,element_id,N1,V1,M1,N2,V2,M2\r\n');
 elements = [% element ID, start node, end node, x1-force, y1-force, z1-moment, x2-force, y2-force, z2-moment, E, I, A, rho
-            1 1 2 0 0 0 0 0 0 200e9 8.33e-6 0.01, 3e3];
-
-% fprintf('ELEMENTS \r\n');
-% fprintf('%-12s %-12s %-12s %-12s %-12s %-12s %-12s %-12s %-12s %-12s %-12s %-12s \r\n','Element id','start node', 'end node','N1(N)','V1(N)','M1(Nm)','N2(N)','V2(N)','M2(Nm)','E(Pa)','I(m^4)','A(m^2)');
-% fprintf('%-12d %-12d %-12d %-12d %-12d %-12d %-12d %-12d %-12d %-12.3g %-12.3g %-12.3g \r\n',transpose(elements));
-% fprintf('\r\n');
+            1 1 2 0 0 0 0 0 0 200e6 8.33333333333333e-6 0.01, 3e3];
 
 boundary_conditions = [% node ID, x-position-fixity, y-position-fixity, z-rotation-fixity
             1 1 1 1];
-
-% fprintf('BOUNDARY CONDITIONS \r\n');
-% fprintf('0-free, 1-fixed \r\n');
-% fprintf('%-12s %-12s %-12s %-12s \r\n','Node id','x-disp', 'y-disp','z-rot');
-% fprintf('%-12d %-12d %-12d %-12d \r\n',transpose(boundary_conditions));
-% fprintf('\r\n');
 
 acceleration = [0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 ...
                 1 0.9 0.8 0.7 0.6 0.5 0.4 0.3 0.2 0.1 ...
@@ -89,11 +74,13 @@ beta = 0.25;
 time_and_motion_data = fopen('data/single_column/time_and_motion_data.csv','w');
 fprintf(time_and_motion_data,'delta_t,t,u, udot, udotdot\r\n');
 udotdot = 0;
-udot = 0;
-u = 0;
+udot = 0.0;
+u = 0.0;
 
+% BEGIN LOOP
 for delta_t = 1:(size(acceleration,2)-1)
 fprintf(time_and_motion_data,'%g, %g, %g, %g, %g \r\n',delta_t, ((delta_t-1)*h), u, udot, udotdot);
+
 % create a blank global stiffness matrix
 Kg = zeros(total_dof);
 
@@ -104,9 +91,6 @@ for e = 1:size(elements,1)
     [L,theta] = getElementLengthAndAngle(e,elements,nodes);
     [T,Tt] = getTransformationMatrix(theta);
     Ke_dash = getElementStiffnessMatrix(e,A,E,I,L);
-%     fprintf(['ELEMENT #','%d',' STIFFNESS MATRIX: \r\n'],e);
-%     fprintf('%-8.3g %-8.3g %-8.3g %-8.3g %-8.3g %-8.3g \r\n',transpose(Ke_dash));
-%     fprintf('\r\n');
     Ke = Tt * Ke_dash * T;
     Kg(dof,dof) = Kg(dof, dof) + Ke;                
 end
@@ -119,42 +103,23 @@ for e = 1:size(elements)
     [L, theta] = getElementLengthAndAngle(e,elements,nodes);
     [T,Tt] = getTransformationMatrix(theta);
     % element stiffness matrix
-%     Me(1,1) = A(e) * L * rho(e) * 0.5; 
-    Me(2,2) = A(e) * L * rho(e) * 0.5;
-%     Me(3,3) = A(e) * L * rho(e) * 0.5;
-%     Me(4,4) = A(e) * L * rho(e) * 0.5;
-    Me(5,5) = A(e) * L * rho(e) * 0.5;
-%     Me(6,6) = A(e) * L * rho(e) * 0.5;
+    Me(1,1) = A(e) * L * rho(e) * 0.5 / 1000; 
+%     Me(2,2) = A(e) * L * rho(e) * 0.5 / 1000;
+%     Me(3,3) = A(e) * L * rho(e) * 0.5 / 1000;
+    Me(4,4) = A(e) * L * rho(e) * 0.5 / 1000;
+%     Me(5,5) = A(e) * L * rho(e) * 0.5 / 1000;
+%     Me(6,6) = A(e) * L * rho(e) * 0.5 / 1000;
     Me = Tt * Me * T;
     M(dof,dof) = M(dof,dof) + Me;
 end
-
-% fprintf('MASS MATRIX: \r\n');
-% output = transpose(M);
-% fprintf('%-8.3g %-8.3g %-8.3g %-8.3g %-8.3g %-8.3g \r\n',output);
-% fprintf('\r\n');
 
 % Damping matrix
 am = 0.05;
 ak = 0.05;
 C = M.*0.05 + Kg.*0.05;
 
-% fprintf('DAMPING MATRIX: \r\n');
-% output = transpose(C);
-% fprintf('%-8.3g %-8.3g %-8.3g %-8.3g %-8.3g %-8.3g \r\n',output);
-% fprintf('\r\n');
-
 % Effective Stiffness Matrix
 Kge = Kg +(2/h)*C + (4/h^2)*M;
-
-% fprintf('EFFECTIVE GLOBAL STIFFNESS MATRIX: \r\n');
-% for i = 1:total_dof
-%    for j = 1:total_dof
-%       fprintf('%-8.3g ',Kge(j,i)); % rather than transpose, swap i&j
-%    end
-%    fprintf('\r\n');
-% end
-% fprintf('\r\n');
 
 % remove rows and columns for fixed dof
 Kge = Kge(~ismember(1:size(Kge,1),fixed_dof),~ismember(1:size(Kge,1),fixed_dof));
@@ -174,12 +139,6 @@ for e = 1:size(elements)
     forces(dof) = forces(dof) + reshape(elements(e,4:9),2*dof_per_node,1);
 end
 
-% fprintf('FORCE VECTOR: \r\n');
-% fprintf('%-8s %-8s %-8s \r\n','x(N)','y(N)','z(Nm)');
-% output = reshape(transpose(forces),(total_dof/3),3);
-% fprintf('%-8.3g %-8.3g %-8.3g \r\n',output);
-% fprintf('\r\n');
-
 % assemble the force matrix
 P = forces + C.*(2/h*u + udot)+ M.*(4/(h^2)*u + 4/h*udot + udotdot);
 
@@ -190,12 +149,6 @@ analysis_forces=P(~ismember(1:size(forces,1),fixed_dof),1);
 displacements = Kge\analysis_forces;
 node_displacements = zeros(total_dof,1);
 node_displacements(free_dof) = node_displacements(free_dof) + displacements;
-
-% fprintf('NODE DISPLACEMENTS: \r\n');
-% fprintf('%-8s %-8s %-8s \r\n','x(m)','y(m)','z(rad)');
-% output = reshape(transpose(node_displacements),(total_dof/3),3);
-% fprintf('%-8.3g %-8.3g %-8.3g \r\n',output);
-% fprintf('\r\n');
 
 % transform displacements for elements into local
 element_displacements = zeros(size(elements,1),2*dof_per_node); %x1, y1, z1, x2, y2, z2 displacments
@@ -208,7 +161,6 @@ for e = 1:size(elements,1)
     [L,theta] = getElementLengthAndAngle(e,elements,nodes);
     [T,Tt] = getTransformationMatrix(theta);
     Ke_dash = getElementStiffnessMatrix(e,A,E,I,L);
-    
     ED_column = node_displacements(dof);
     ED_row = reshape(ED_column,1,size(ED_column,1));
     element_displacements(e,1:2*dof_per_node) = ED_row;
@@ -220,23 +172,23 @@ for e = 1:size(elements,1)
     element_loads(e,1:2*dof_per_node) = element_loads(e,1:2*dof_per_node).*load_conversion_matrix;
 end
 
+temp_nodes = nodes;
 for n = 1:size(nodes,1)
     dof = (n*dof_per_node -2):(n*dof_per_node);
-   nodes(n,2:4) = nodes(n,2:4) + reshape(node_displacements(dof),1,dof_per_node);
+    temp_nodes(n,2:4) = nodes(n,2:4) + reshape(node_displacements(dof),1,dof_per_node);
 end
-% fprintf('Iteration: %f \nTimestep: %f \nAcceleration: %f \nVelocity: %f \nDisplacement: %f \n',delta_t, delta_t*h, udotdot,udot,u);
-% fprintf('NODE DISPLACEMENTS');
+
 for n = 1:size(nodes,1)
-    output = nodes(n,2:4);
+    output = temp_nodes(n,2:4);
     fprintf(nodes_out,'%g, %g, %g, %g, %g \r\n',delta_t, n, output);
     fprintf('\r\n');
 end
+
 for e = 1:size(element_loads)
     output = element_loads(e,1:end);
     fprintf(elements_out,'%g, %g, %g, %g, %g, %g, %g, %g \r\n',delta_t, e, output);
     fprintf('\r\n');
 end
-% fprintf('ELEMENT FORCES');
 
 % update motion data
 udotdotn = udotdot;
