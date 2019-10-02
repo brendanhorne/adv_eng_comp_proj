@@ -2,7 +2,7 @@ clc, clear, close
 % All units in SI kg, m, s, N, Pa etc.
 
 % INPUT SPACE
-nodes_out = fopen('data/single_column/nodes.csv','w');
+nodes_out = fopen('data/single_column/node_displacements.csv','w');
 fprintf(nodes_out,'delta_t,node_id,x,y,z\r\n');
 nodes = [% node ID, x-coordinate, y-coordinate, z-rotation, x-force, y-force, z-moment
             1 0 0 0 0 0 0;
@@ -34,7 +34,8 @@ boundary_conditions = [% node ID, x-position-fixity, y-position-fixity, z-rotati
 acceleration = [0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 ...
                 1 0.9 0.8 0.7 0.6 0.5 0.4 0.3 0.2 0.1 ...
                 0 -0.1 -0.2 -0.3 -0.4 -0.5 -0.6 -0.7 -0.8 -0.9 ...
-                -1 -0.9 -0.8 -0.7 -0.6 -0.5 -0.4 -0.3 -0.2 -0.1];
+                -1 -0.9 -0.8 -0.7 -0.6 -0.5 -0.4 -0.3 -0.2 -0.1 ...
+                ];
         
 % PROGRAM SPACE
 
@@ -82,12 +83,17 @@ free_dof = zeros((total_dof-size(fixed_dof,1)),1);
 free_dof = reshape(all_dof(~ismember(all_dof,fixed_dof)),size(free_dof,1),1);
 
 h = 0.01;
-for delta_t = 1:size(acceleration,2)
+gamma = 0.5;
+beta = 0.25;
 
-udotdot = acceleration(delta_t);
-udot = udotdot*h;
-u = udot * h;
+time_and_motion_data = fopen('data/single_column/time_and_motion_data.csv','w');
+fprintf(time_and_motion_data,'delta_t,t,u, udot, udotdot\r\n');
+udotdot = 0;
+udot = 0;
+u = 0;
 
+for delta_t = 1:(size(acceleration,2)-1)
+fprintf(time_and_motion_data,'%g, %g, %g, %g, %g \r\n',delta_t, ((delta_t-1)*h), u, udot, udotdot);
 % create a blank global stiffness matrix
 Kg = zeros(total_dof);
 
@@ -111,9 +117,15 @@ Me = zeros(dof_per_node *2);
 for e = 1:size(elements)
     [dof] = getElementDegreesOfFreedom(e,elements,dof_per_node);
     [L, theta] = getElementLengthAndAngle(e,elements,nodes);
-    for d = 1:(dof_per_node*2)
-        Me(d,d) = A(e) * L * rho(e) * 0.5;
-    end    
+    [T,Tt] = getTransformationMatrix(theta);
+    % element stiffness matrix
+%     Me(1,1) = A(e) * L * rho(e) * 0.5; 
+    Me(2,2) = A(e) * L * rho(e) * 0.5;
+%     Me(3,3) = A(e) * L * rho(e) * 0.5;
+%     Me(4,4) = A(e) * L * rho(e) * 0.5;
+    Me(5,5) = A(e) * L * rho(e) * 0.5;
+%     Me(6,6) = A(e) * L * rho(e) * 0.5;
+    Me = Tt * Me * T;
     M(dof,dof) = M(dof,dof) + Me;
 end
 
@@ -225,6 +237,13 @@ for e = 1:size(element_loads)
     fprintf('\r\n');
 end
 % fprintf('ELEMENT FORCES');
+
+% update motion data
+udotdotn = udotdot;
+udotdot = acceleration(delta_t+1);
+udotn = udot;
+udot = udot + (1-gamma)*h*udotdotn + gamma * h * udotdot;
+u = u + h*udotn + ((1-2*beta)/2)*h^2*udotdotn + beta * h^2*udotdot;
 
 end
 fclose('all');
