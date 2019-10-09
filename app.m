@@ -15,8 +15,8 @@ clc, clear, close
 nodes_out = fopen('data/single_column/node_displacements.csv','w');
 fprintf(nodes_out,'delta_t,node_id,x,y,z\r\n');
 nodes = [% node ID, x-coordinate, y-coordinate, z-rotation, x-force, y-force, z-moment
-            1 0 0 0 0 0 0;
-            2 0 1 0 0 0 0];
+            1 0  0 0 0 0 0;
+            2 0  1 0 0 0 0];
 
 elements_out = fopen('data/single_column/element_forces.csv','w');
 fprintf(elements_out,'delta_t,element_id,N1,V1,M1,N2,V2,M2\r\n');
@@ -81,12 +81,12 @@ h = 0.001;
 gamma = 0.5;
 beta = 0.25;
 
-% %CALFEM
-% b1 = h*h*0.5*(1-2*beta);
-% b2 = (1-gamma)*h;
-% b3 = gamma*h;
-% b4 = beta*h*h;
-% %CALFEM
+%CALFEM
+b1 = h*h*0.5*(1-2*beta);
+b2 = (1-gamma)*h;
+b3 = gamma*h;
+b4 = beta*h*h;
+%CALFEM
 
 transient_direction = [1 0 0]; % for converting from acceleration to force and, applying to only one direction
 transient_vector = zeros(total_dof,1);
@@ -129,30 +129,30 @@ for e = 1:size(elements,1)
 end
 
 % Effective Stiffness Matrix
-Kge = Kg +(2/h).*C + (4/h^2).*M;
+% Kge = Kg +(2/h).*C + (4/h^2).*M;
 
-% Kge = M+b3*C+b4*Kg; %CALFEM 
+
+Kge = M+b3*C+b4*Kg; %CALFEM 
 
 % remove rows and columns for fixed dof
 Kge = Kge(~ismember(1:size(Kge,1),fixed_dof),~ismember(1:size(Kge,1),fixed_dof));
 
 time_and_motion_data = fopen('data/single_column/time_and_motion_data.csv','w');
 fprintf(time_and_motion_data,'delta_t,t,u, udot, udotdot\r\n');
-udot = zeros(total_dof,1);
-u = zeros(total_dof,1);
-udotdot = zeros(total_dof,1);
 
-% %CALFEM
-% d0=[0;0;0]; %MODIFIED
-% v0=[0;0;0]; %MODIFIED
-% a0=M\(transient_vector.*load(1)-C*v0-K*d0);
-% dnew=d0;    vnew=v0;    anew=a0; 
-% %CALFEM
+%CALFEM
+dnew = zeros(total_dof,1);
+vnew = zeros(total_dof,1);
+anew = zeros(total_dof,1);
+dt = h;
+dold=dnew;      vold=vnew;      aold=anew;
+%CALFEM
+
 
 % BEGIN LOOP
 for delta_t = 1:(size(load,2)-1)
 time = delta_t * h;  
-fprintf(time_and_motion_data,'%g, %g, %g, %g, %g \r\n',delta_t, ((delta_t-1)*h), u(4,1), udot(4,1), udotdot(4,1));
+fprintf(time_and_motion_data,'%g, %g, %g, %g, %g \r\n',delta_t, ((delta_t)*h), dnew(4,1), vnew(4,1), anew(4,1));
 
 forces=zeros(size(nodes,1)*dof_per_node,1);
 
@@ -168,41 +168,43 @@ for e = 1:size(elements)
     [dof] = getElementDegreesOfFreedom(e,elements,dof_per_node);
     forces(dof) = forces(dof) + reshape(elements(e,4:9),2*dof_per_node,1);
 end
+dold=dnew;      vold=vnew;      aold=anew;
+dpred=dold+dt*vold+b1*aold;
+vpred=vold+b2*aold;
 
-udotdotn = udotdot;
-udotn = udot;
-un = u;
-udotpredicted = udotn+(1-gamma)*h*udotdotn;
-upredicted = un+h*udotn+h*h*0.5*(1-2*beta)*udotdotn;
+% % assemble the force matrix
+% P = forces + C*(2/h.*u + udot) + M*(4/(h^2).*u + 4/h.*udotpredicted); %add the vector to motion scalars
 
-% assemble the force matrix
-P = forces + C*(2/h.*u + udot) + M*(4/(h^2).*u + 4/h.*udot + udotdot) + transient_vector.*load(delta_t+1) - Kg*upredicted + C*udotpredicted; %add the vector to motion scalars
-
-% %CALFEM
-% dold=dnew;      vold=vnew;      aold=anew;
-% dpred=dold+h*vold+b1*aold;
-% vpred=vold+b2*aold;
-% P=load-C*vpred-K*dpred;
-% %CALFEM
+%CALFEM
+P=transient_vector.*load(delta_t+1)-C*vpred-Kg*dpred;
+%CALFEM
 
 % remove rows and columns for fixed dof
 P=P(~ismember(1:size(forces,1),fixed_dof),1);
+dpred=dpred(~ismember(1:size(forces,1),fixed_dof),1);
+vpred=vpred(~ismember(1:size(forces,1),fixed_dof),1);
 
 % %CALFEM
 % anew=Kge\P;  dnew=dpred+b4*anew;  vnew=vpred+b3*anew;
 % %CALFEM
 
 % % solve the displacements
-displacements = Kge\P;
-% displacements = dnew; %CALFEM
+% displacements = Kge\P;
+
+%CALFEM
+anew=Kge\P;
+dnew=dpred+b4*anew;  
+vnew=vpred+b3*anew;
+dold=dnew;      vold=vnew;      aold=anew;
+anew = zeros(total_dof,1);
+anew(free_dof) = anew(free_dof) + aold;
+vnew = zeros(total_dof,1);
+vnew(free_dof) = vnew(free_dof) + vold;
+displacements = dnew;
 node_displacements = zeros(total_dof,1);
 node_displacements(free_dof) = node_displacements(free_dof) + displacements;
-
-% update motion data
-
-u = node_displacements;
-udotdot = (u-upredicted)./(h*h*beta);
-udot = udotpredicted + h*gamma.*udotdot;
+dnew = zeros(total_dof,1);
+dnew(free_dof) = dnew(free_dof) + dold;
 
 % transform displacements for elements into local
 element_displacements = zeros(size(elements,1),2*dof_per_node); %x1, y1, z1, x2, y2, z2 displacments
