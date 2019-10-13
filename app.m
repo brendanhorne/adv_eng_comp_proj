@@ -1,30 +1,39 @@
 clc, clear, close
 % All units in SI kg, m, s, N, Pa etc.
 % 
-% filename = input('What file would you like to load?\n','s');
-% folder
-% if ~exist('data/'+filename,'dir')
+% filename = input('What model would you like to load?\n','s');
+% if ~exist(['data/',filename],'dir')
 %     disp("That file doesn't exist!");
-%     exit
+%     return
 % else
 %     %load the files from that directory nodes, elements, boundary_conditions
+%     nodes = load(['data/',filename,'/nodes.csv']);
+%     elements = load(['data/',filename,'/elements.csv']);
+% %     sections = load(['data/',filename,'/sections.csv']);
+%     
 %     %run the code
 % end
 
-% INPUT SPACE
+% % INPUT SPACE
 nodes_out = fopen('data/single_column/node_displacements.csv','w');
 fprintf(nodes_out,'delta_t,node_id,x,y,z\r\n');
 nodes = [% node ID, x-coordinate, y-coordinate, z-rotation, x-force, y-force, z-moment
             1 0  0 0 0 0 0;
-            2 0  1 0 0 0 0];
-
+            2 0  0 0 0 0 0;
+            3 0  1 0 0 0 0];
+% 
 elements_out = fopen('data/single_column/element_forces.csv','w');
 fprintf(elements_out,'delta_t,element_id,N1,V1,M1,N2,V2,M2\r\n');
-elements = [% element ID, start node, end node, x1-force, y1-force, z1-moment, x2-force, y2-force, z2-moment, E, I, A, rho
-            1 1 2 0 0 0 0 0 0 200e9 8.33333333333333e-6 0.01, 3e3];
+elements = [% element ID, start node, end node, x1-force, y1-force, z1-moment, ...
+            % x2-force, y2-force, z2-moment, E, I, A, rho (LOCAL)
+            1 2 3 0 0 0 0 0 0 200e9 8.33333333333333e-6 0.01, 3e3];
 
+springs = [% spring ID, start node, end node, x-k, y-k, z-k (GLOBAL)
+            1 1 2 0 4e9 0];
+        
 boundary_conditions = [% node ID, x-position-fixity, y-position-fixity, z-rotation-fixity
-            1 1 1 1];
+            1 1 1 1;
+            2 1 0 1];
 
 load = zeros(1,1000);
 load(1:151) = 0:0.1:15;
@@ -72,7 +81,7 @@ end
 
 % determine the free dofs
 fixed_dof = sort(fixed_dof);
-total_dof = dof_per_node * size(nodes,1);
+total_dof = dof_per_node * size(nodes,1);%add spring
 all_dof = 1:total_dof;
 free_dof = zeros((total_dof-size(fixed_dof,1)),1);
 free_dof = reshape(all_dof(~ismember(all_dof,fixed_dof)),size(free_dof,1),1);
@@ -88,9 +97,10 @@ b3 = gamma*h;
 b4 = beta*h*h;
 %CALFEM
 
-transient_direction = [1 0 0]; % for converting from acceleration to force and, applying to only one direction
+%Transient Load Vector
+transient_direction = [0 1 0]; % for converting from acceleration to force and, applying to only one direction
 transient_vector = zeros(total_dof,1);
-for d = 1:total_dof
+for d = 1:total_dof %hard coded for spring
    r = rem(d,3);
    if r == 1
        transient_vector(d) = transient_direction(1);
@@ -120,18 +130,43 @@ for e = 1:size(elements,1)
     Ke_dash = getElementStiffnessMatrix(e,A,E,I,L);    
     Ke = Tt * Ke_dash * T;
     Kg(dof,dof) = Kg(dof, dof) + Ke;               
+end
+for e = 1:size(elements,1)
+    [dof] = getElementDegreesOfFreedom(e,elements,dof_per_node);
+    [L,theta] = getElementLengthAndAngle(e,elements,nodes);
+    [T,Tt] = getTransformationMatrix(theta);
     Me_dash = getMassMatrix(e,A,L,rho);
     Me = Tt * Me_dash * T;
-    M(dof,dof) = M(dof, dof) + Me;   
+    M(dof,dof) = M(dof, dof) + Me;               
+end
+for e = 1:size(elements,1)
+    [dof] = getElementDegreesOfFreedom(e,elements,dof_per_node);
+    [L,theta] = getElementLengthAndAngle(e,elements,nodes);
+    [T,Tt] = getTransformationMatrix(theta);
     Ce_dash = am.*Me_dash + ak.*Ke_dash;
     Ce = Tt * Ce_dash * T;
-    C(dof,dof) = C(dof, dof) + Ce; 
+    C(dof,dof) = C(dof, dof) + Ce;              
 end
+
+%spring element
+for s = 1:size(springs)
+    Kspring = [springs(s,4) 0 0 -springs(s,4) 0 0;
+                0 springs(s,5) 0 0 -springs(s,5) 0;
+                0 0 springs(s,6) 0 0  -springs(s,6);
+                -springs(s,4) 0 0 springs(s,4) 0 0;
+                0 -springs(s,5) 0 0 springs(s,5) 0;
+                0 0 -springs(s,6) 0 0 springs(s,6)];
+    [dof] = geSpringDegreesOfFreedom(s,springs,dof_per_node);
+    Kg(dof,dof) = Kg(dof,dof) + Kspring;
+    C(dof,dof) = C(dof,dof) + ak.*Kspring;
+end
+% Kspring = [4e9 -4e9; -4e9 4e9];
+% 
+% Kg([2 5],[2 5]) = Kg([2 5],[2 5]) + Kspring;
+% C([2 5],[2 5]) = C([2 5],[2 5]) + ak.*Kspring;
 
 % Effective Stiffness Matrix
 % Kge = Kg +(2/h).*C + (4/h^2).*M;
-
-
 Kge = M+b3*C+b4*Kg; %CALFEM 
 
 % remove rows and columns for fixed dof
@@ -173,24 +208,20 @@ dpred=dold+dt*vold+b1*aold;
 vpred=vold+b2*aold;
 
 % % assemble the force matrix
+P = zeros(total_dof,1);
 % P = forces + C*(2/h.*u + udot) + M*(4/(h^2).*u + 4/h.*udotpredicted); %add the vector to motion scalars
-
 %CALFEM
-P=transient_vector.*load(delta_t+1)-C*vpred-Kg*dpred;
+P=P + transient_vector.*load(delta_t+1)-C*vpred-Kg*dpred;
 %CALFEM
 
 % remove rows and columns for fixed dof
-P=P(~ismember(1:size(forces,1),fixed_dof),1);
-dpred=dpred(~ismember(1:size(forces,1),fixed_dof),1);
-vpred=vpred(~ismember(1:size(forces,1),fixed_dof),1);
+P=P(~ismember(1:total_dof,fixed_dof),1);
+dpred=dpred(~ismember(1:total_dof,fixed_dof),1);
+vpred=vpred(~ismember(1:total_dof,fixed_dof),1);
 
-% %CALFEM
-% anew=Kge\P;  dnew=dpred+b4*anew;  vnew=vpred+b3*anew;
-% %CALFEM
 
 % % solve the displacements
 % displacements = Kge\P;
-
 %CALFEM
 anew=Kge\P;
 dnew=dpred+b4*anew;  
@@ -231,7 +262,7 @@ end
 temp_nodes = nodes;
 for n = 1:size(nodes,1)
     dof = (n*dof_per_node -2):(n*dof_per_node);
-    temp_nodes(n,2:4) = nodes(n,2:4) + reshape(node_displacements(dof),1,dof_per_node);
+    temp_nodes(n,2:4) = reshape(node_displacements(dof),1,dof_per_node);
 end
 
 for n = 1:size(nodes,1)
@@ -283,6 +314,15 @@ function [dof] = getElementDegreesOfFreedom(i,elements,dof_per_node)
     start_node = elements(i, 2);
     start_node_dof = start_node * [dof_per_node,dof_per_node,dof_per_node] - [2, 1, 0];
     end_node = elements(i,3);
+    end_node_dof = end_node * [dof_per_node,dof_per_node,dof_per_node] - [2, 1, 0];
+    dof = [start_node_dof, end_node_dof];
+end
+
+% Returns the indicies of the degrees of freedom for a given spring
+function [dof] = geSpringDegreesOfFreedom(i,springs,dof_per_node)
+    start_node = springs(i, 2);
+    start_node_dof = start_node * [dof_per_node,dof_per_node,dof_per_node] - [2, 1, 0];
+    end_node = springs(i,3);
     end_node_dof = end_node * [dof_per_node,dof_per_node,dof_per_node] - [2, 1, 0];
     dof = [start_node_dof, end_node_dof];
 end
