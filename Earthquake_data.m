@@ -2629,7 +2629,6 @@ Acceleration=[0	-3.004
 Time=Acceleration(:,1);
 Acceleration=Acceleration(:,2);
 
-
 plot(Time,Acceleration)
 title('NorthRidge Earthquake')
 xlabel('Time(Sec)')

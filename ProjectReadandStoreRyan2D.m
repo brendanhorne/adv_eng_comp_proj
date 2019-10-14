@@ -18,6 +18,12 @@ nodes = zeros(total_nodes,3);
         
         %y coordinates
         nodes(i,3) = floor((i-1)/5)*3.5;
+        
+        %z rotation
+        nodes(i,4) = 0;
+        
+        % forces
+        nodes(i,5:7) = [0 0 0];
     end
     
 %Elements
@@ -29,44 +35,45 @@ cpf = 5; %Columns per floor
 bsi = cpf + 1; % beam starting index
 n = 0; %floor number
 
-elements = zeros(total_members,4);
+E = 35e9;
+ro = 3000;
+k = 4e9;
+Ic = (0.4^4)/12;
+yb = (0.25*0.45*0.225 + 0.6*0.15*0.525) /  (0.25*0.45 + 0.6*0.15);
+Ib =  0.25*0.45*(yb - 0.45/2)^2 + (0.25*0.45^3)/12 + 0.6*0.15*(0.45 + 0.15/2 - yb)^2 + (0.6*0.15^3)/12;
+Is = (2.5^3*0.4)/12;
+Ac = 0.16;
+Ab = 0.6*0.15+0.45*0.25;
+As = 1;
+    
+elements = zeros(total_members,13);
     for i = 1:total_members
         elements(i,1) = i;
         n = i * 1/9;
         elements(i,2) = i - floor((i - 1)/9)*4;
         elements(i,3) = i + 5 - floor((i + 3)/9)*4;
-        if  elements (i, 3) - elements(i,2) < 5
-        elements(i,4) = 2;
-        elseif rem((i-3),9) == 0
-            elements(i,4) = 3;
+        if  elements (i, 3) - elements(i,2) < 5 % beam
+            elements(i,10) = E;
+            elements(i,11) = Ib;
+            elements(i,12) = Ab;
+            elements(i,13) = ro;
+        elseif rem((i-3),9) == 0 % shear wall
+            elements(i,10) = E;
+            elements(i,11) = Is;
+            elements(i,12) = As;
+            elements(i,13) = ro;
         else
-            elements(i,4) = 1;
+            elements(i,10) = E;
+            elements(i,11) = Ic;
+            elements(i,12) = Ac;
+            elements(i,13) = ro;
         end
     end
-    
-    E = 35e9;
-    ro = 3000;
-    k = 4e9;
-    Ic = (0.4^4)/12;
-    yb = (0.25*0.45*0.225 + 0.6*0.15*0.525) /  (0.25*0.45 + 0.6*0.15);
-    Ib =  0.25*0.45*(yb - 0.45/2)^2 + (0.25*0.45^3)/12 + 0.6*0.15*(0.45 + 0.15/2 - yb)^2 + (0.6*0.15^3)/12;
-    Is = (02.5*4.5^3)/12;
-    
-    %Section Properties = [ section number, E, I, A]; (1 = column, 2= beam, 3 = shear
-    %wall) 
-    
-    sec_props = [1, 1, Ic, 0.16;
-                 2, 1, Ib, 0.2025;
-                 3, 1, Is, 1];
-                
 
-    csvwrite('nodedata2D.csv',nodes)
-    csvwrite('elementdata2D.csv',elements)
-    csvwrite('sectiondata2D.csv',sec_props)
-    
-    type('nodedata2D.csv')
-    type('elementdata2D.csv')
-    type('sectiondata2D.csv')
+node46 = [46 10 0 0 0 0 0]; %add in node for spring
+nodes = [nodes; node46];     
+
+
 
 
     

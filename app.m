@@ -1,39 +1,19 @@
 clc, clear, close
 % All units in SI kg, m, s, N, Pa etc.
-% 
-% filename = input('What model would you like to load?\n','s');
-% if ~exist(['data/',filename],'dir')
-%     disp("That file doesn't exist!");
-%     return
-% else
-%     %load the files from that directory nodes, elements, boundary_conditions
-%     nodes = load(['data/',filename,'/nodes.csv']);
-%     elements = load(['data/',filename,'/elements.csv']);
-% %     sections = load(['data/',filename,'/sections.csv']);
-%     
-%     %run the code
-% end
 
-% % INPUT SPACE
-nodes_out = fopen('data/single_column/node_displacements.csv','w');
-fprintf(nodes_out,'delta_t,node_id,x,y,z\r\n');
-nodes = [% node ID, x-coordinate, y-coordinate, z-rotation, x-force, y-force, z-moment
-            1 0  0 0 0 0 0;
-            2 0  0 0 0 0 0;
-            3 0  1 0 0 0 0];
-% 
-elements_out = fopen('data/single_column/element_forces.csv','w');
-fprintf(elements_out,'delta_t,element_id,N1,V1,M1,N2,V2,M2\r\n');
-elements = [% element ID, start node, end node, x1-force, y1-force, z1-moment, ...
-            % x2-force, y2-force, z2-moment, E, I, A, rho (LOCAL)
-            1 2 3 0 0 0 0 0 0 200e9 8.33333333333333e-6 0.01, 3e3];
+% READ INPUT
+ProjectReadandStoreRyan2D;
 
 springs = [% spring ID, start node, end node, x-k, y-k, z-k (GLOBAL)
-            1 1 2 0 4e9 0];
+            1 3 46 0 4e9 0];
         
 boundary_conditions = [% node ID, x-position-fixity, y-position-fixity, z-rotation-fixity
             1 1 1 1;
-            2 1 0 1];
+            2 1 1 1;
+            3 1 0 1;
+            4 1 1 1;
+            5 1 1 1;
+            46 1 1 1];
 
 % EARTH QUAKE LOAD
 A = load('data/earthquake/TARZANA_CHAN_1_90_DEG_ACC.csv');
@@ -44,11 +24,7 @@ for r = 1:size(A,1)
     load(start_index:end_index) = A(r,:);
 end
 % convert to m/s^2
-load = load.*1e-2.*15;
-% Earthquake_data;
-% load = zeros(1,1000);
-% load(1:151) = 0:0.1:15;
-% load(151:251) = 15:-0.15:0;
+load = load.*1e-2;
 
 % PROGRAM SPACE
 
@@ -98,16 +74,14 @@ free_dof = zeros((total_dof-size(fixed_dof,1)),1);
 free_dof = reshape(all_dof(~ismember(all_dof,fixed_dof)),size(free_dof,1),1);
 
 h = 0.02;
-% h = 0.001;
 gamma = 0.5;
 beta = 0.25;
 
-%CALFEM
+% BETA VALUES
 b1 = h*h*0.5*(1-2*beta);
 b2 = (1-gamma)*h;
 b3 = gamma*h;
 b4 = beta*h*h;
-%CALFEM
 
 %Transient Load Vector
 transient_direction = [0 1 0]; % for converting from acceleration to force and, applying to only one direction
@@ -172,29 +146,30 @@ for s = 1:size(springs)
     Kg(dof,dof) = Kg(dof,dof) + Kspring;
     C(dof,dof) = C(dof,dof) + ak.*Kspring;
 end
-% Kspring = [4e9 -4e9; -4e9 4e9];
-% 
-% Kg([2 5],[2 5]) = Kg([2 5],[2 5]) + Kspring;
-% C([2 5],[2 5]) = C([2 5],[2 5]) + ak.*Kspring;
 
 % Effective Stiffness Matrix
-% Kge = Kg +(2/h).*C + (4/h^2).*M;
-Kge = M+b3*C+b4*Kg; %CALFEM 
+Kge = M+b3*C+b4*Kg;
 
 % remove rows and columns for fixed dof
 Kge = Kge(~ismember(1:size(Kge,1),fixed_dof),~ismember(1:size(Kge,1),fixed_dof));
 
+transient_vector = M*transient_vector.*transient_vector;
+
 time_and_motion_data = fopen('data/single_column/time_and_motion_data.csv','w');
 fprintf(time_and_motion_data,'delta_t,t,u, udot, udotdot\r\n');
 
-%CALFEM
 dnew = zeros(total_dof,1);
 vnew = zeros(total_dof,1);
 anew = zeros(total_dof,1);
 dt = h;
 dold=dnew;      vold=vnew;      aold=anew;
-%CALFEM
 
+% Initialise the results variables
+node_results = zeros(total_dof, size(load,2)-1);
+element_results = cell(size(elements,1),1);
+for e = 1:size(element_results,1)
+   element_results{e,1} = zeros(2*dof_per_node,size(load,2)-1);
+end
 
 % BEGIN LOOP
 for delta_t = 1:(size(load,2)-1)
@@ -220,21 +195,14 @@ dpred=dold+dt*vold+b1*aold;
 vpred=vold+b2*aold;
 
 % % assemble the force matrix
-P = zeros(total_dof,1);
-% P = forces + C*(2/h.*u + udot) + M*(4/(h^2).*u + 4/h.*udotpredicted); %add the vector to motion scalars
-%CALFEM
-P=P + transient_vector.*load(delta_t+1)-C*vpred-Kg*dpred;
-%CALFEM
+P= transient_vector.*load(delta_t+1)-C*vpred-Kg*dpred;
 
 % remove rows and columns for fixed dof
 P=P(~ismember(1:total_dof,fixed_dof),1);
 dpred=dpred(~ismember(1:total_dof,fixed_dof),1);
 vpred=vpred(~ismember(1:total_dof,fixed_dof),1);
 
-
 % % solve the displacements
-% displacements = Kge\P;
-%CALFEM
 anew=Kge\P;
 dnew=dpred+b4*anew;  
 vnew=vpred+b3*anew;
@@ -269,28 +237,25 @@ for e = 1:size(elements,1)
     element_loads(e,1:2*dof_per_node) = Ke_dash*ED_dash_column - reshape(elements(e,4:9),2*dof_per_node,1);
     load_conversion_matrix = [1 1 -1 1 -1 1];
     element_loads(e,1:2*dof_per_node) = element_loads(e,1:2*dof_per_node).*load_conversion_matrix;
+    element_results{e,1}(:,delta_t) = element_loads(e,:);
 end
 
-temp_nodes = nodes;
-for n = 1:size(nodes,1)
-    dof = (n*dof_per_node -2):(n*dof_per_node);
-    temp_nodes(n,2:4) = reshape(node_displacements(dof),1,dof_per_node);
-end
-
-for n = 1:size(nodes,1)
-    output = temp_nodes(n,2:4);
-    fprintf(nodes_out,'%g, %g, %g, %g, %g \r\n',delta_t, n, output);
-    fprintf('\r\n');
-end
-
-for e = 1:size(element_loads)
-    output = element_loads(e,1:end);
-    fprintf(elements_out,'%g, %g, %g, %g, %g, %g, %g, %g \r\n',delta_t, e, output);
-    fprintf('\r\n');
-end
+node_results(:,delta_t) = node_displacements;
 
 end
-fclose('all');
+
+figure
+X = 0:0.02:((size(load,2)-2)*0.02);
+plot(X,node_results(45,:))
+title('Displacement at node 45');
+xlabel('Time (s)');
+ylabel('Displacement (m)');
+
+figure
+plot(X,element_results{71,1}(3,:))
+title('Moment on element 71');
+xlabel('Time (s)');
+ylabel('Moment (Nm)');
 
 % FUNCTION SPACE
 
