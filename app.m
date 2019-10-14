@@ -35,9 +35,20 @@ boundary_conditions = [% node ID, x-position-fixity, y-position-fixity, z-rotati
             1 1 1 1;
             2 1 0 1];
 
-load = zeros(1,1000);
-load(1:151) = 0:0.1:15;
-load(151:251) = 15:-0.15:0;
+% EARTH QUAKE LOAD
+A = load('data/earthquake/TARZANA_CHAN_1_90_DEG_ACC.csv');
+load = zeros(1,size(A,1)*size(A,2));
+for r = 1:size(A,1)
+    start_index = r*size(A,2)-(size(A,2)-1);
+    end_index = r*size(A,2);
+    load(start_index:end_index) = A(r,:);
+end
+% convert to m/s^2
+load = load.*1e-2.*15;
+% Earthquake_data;
+% load = zeros(1,1000);
+% load(1:151) = 0:0.1:15;
+% load(151:251) = 15:-0.15:0;
 
 % PROGRAM SPACE
 
@@ -86,7 +97,8 @@ all_dof = 1:total_dof;
 free_dof = zeros((total_dof-size(fixed_dof,1)),1);
 free_dof = reshape(all_dof(~ismember(all_dof,fixed_dof)),size(free_dof,1),1);
 
-h = 0.001;
+h = 0.02;
+% h = 0.001;
 gamma = 0.5;
 beta = 0.25;
 

@@ -1,6 +1,5 @@
 %1994 Northbridge Earthquake
 %Time(sec)vs Acceleration in cm/sec^2
-
 Acceleration=[0	-3.004
 0.02	-3.425
 0.04	-5.664
@@ -2632,7 +2631,7 @@ Acceleration=Acceleration(:,2);
 
 
 plot(Time,Acceleration)
-title('NorthBridge Earthquake')
+title('NorthRidge Earthquake')
 xlabel('Time(Sec)')
 ylabel('Acceleration(cm/sec^2)')
 
