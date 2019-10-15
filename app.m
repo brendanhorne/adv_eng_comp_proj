@@ -2,31 +2,25 @@ clc, clear, close
 % All units in SI kg, m, s, N, Pa etc.
 
 % READ INPUT
-ProjectReadandStoreRyan2D;
 
-springs = [% spring ID, start node, end node, x-k, y-k, z-k (GLOBAL)
-            1 3 46 0 4e9 0];
-        
-boundary_conditions = [% node ID, x-position-fixity, y-position-fixity, z-rotation-fixity
-            1 1 1 1;
-            2 1 1 1;
-            3 1 0 1;
-            4 1 1 1;
-            5 1 1 1;
-            46 1 1 1];
+% 2D Frame
+% model_2D_8_story_frame
+% Northridge_earthquake
+% dof_of_interest = 45*3-1;
+% element_of_interest = 1;
+% load_of_interest = 1;
+% h = 0.02;
+% Time = 0:h:((size(load,2)-2)*h);
+% transient_direction = [0 1 0];
 
-% EARTH QUAKE LOAD
-A = load('data/earthquake/TARZANA_CHAN_1_90_DEG_ACC.csv');
-load = zeros(1,size(A,1)*size(A,2));
-for r = 1:size(A,1)
-    start_index = r*size(A,2)-(size(A,2)-1);
-    end_index = r*size(A,2);
-    load(start_index:end_index) = A(r,:);
-end
-% convert to m/s^2
-load = load.*1e-2;
-
-% PROGRAM SPACE
+% Single Column
+single_column
+calfem_test_data
+dof_of_interest = 4;
+element_of_interest = 1;
+h = 0.001;
+Time = 0:h:((size(load,2)-2)*h);
+transient_direction = [1 0 0];
 
 % form column vectors of element properties
 E = elements(1:end,10); 
@@ -48,7 +42,7 @@ fixed_dof = zeros(number_of_fixed_dof,1);
 dof_per_node = 3;
 counter = 1;
 
-%TODO add spring stiffness to DOF appropriate.
+% TODO add spring stiffness to DOF appropriate.
 
 % build the list of fixed dof 
 for bc = 1:size(boundary_conditions,1)
@@ -73,7 +67,6 @@ all_dof = 1:total_dof;
 free_dof = zeros((total_dof-size(fixed_dof,1)),1);
 free_dof = reshape(all_dof(~ismember(all_dof,fixed_dof)),size(free_dof,1),1);
 
-h = 0.02;
 gamma = 0.5;
 beta = 0.25;
 
@@ -83,10 +76,9 @@ b2 = (1-gamma)*h;
 b3 = gamma*h;
 b4 = beta*h*h;
 
-%Transient Load Vector
-transient_direction = [0 1 0]; % for converting from acceleration to force and, applying to only one direction
+% Transient Load Vector
 transient_vector = zeros(total_dof,1);
-for d = 1:total_dof %hard coded for spring
+for d = 1:total_dof 
    r = rem(d,3);
    if r == 1
        transient_vector(d) = transient_direction(1);
@@ -103,6 +95,7 @@ end
 Kg = zeros(total_dof);
 M = zeros(total_dof);
 C = zeros(total_dof);
+dof_mass = zeros(total_dof,1);
 
 % Damping matrix
 am = 0.05;
@@ -115,26 +108,17 @@ for e = 1:size(elements,1)
     [T,Tt] = getTransformationMatrix(theta);
     Ke_dash = getElementStiffnessMatrix(e,A,E,I,L);    
     Ke = Tt * Ke_dash * T;
-    Kg(dof,dof) = Kg(dof, dof) + Ke;               
-end
-for e = 1:size(elements,1)
-    [dof] = getElementDegreesOfFreedom(e,elements,dof_per_node);
-    [L,theta] = getElementLengthAndAngle(e,elements,nodes);
-    [T,Tt] = getTransformationMatrix(theta);
+    Kg(dof,dof) = Kg(dof, dof) + Ke;     
     Me_dash = getMassMatrix(e,A,L,rho);
     Me = Tt * Me_dash * T;
-    M(dof,dof) = M(dof, dof) + Me;               
-end
-for e = 1:size(elements,1)
-    [dof] = getElementDegreesOfFreedom(e,elements,dof_per_node);
-    [L,theta] = getElementLengthAndAngle(e,elements,nodes);
-    [T,Tt] = getTransformationMatrix(theta);
+    M(dof,dof) = M(dof, dof) + Me;
     Ce_dash = am.*Me_dash + ak.*Ke_dash;
     Ce = Tt * Ce_dash * T;
-    C(dof,dof) = C(dof, dof) + Ce;              
+    C(dof,dof) = C(dof, dof) + Ce;  
+    dof_mass(dof,1) = dof_mass(dof,1) + ones(dof_per_node*2,1).*L*A(e)*rho(e)/2;
 end
 
-%spring element
+% spring element
 for s = 1:size(springs)
     Kspring = [springs(s,4) 0 0 -springs(s,4) 0 0;
                 0 springs(s,5) 0 0 -springs(s,5) 0;
@@ -153,10 +137,8 @@ Kge = M+b3*C+b4*Kg;
 % remove rows and columns for fixed dof
 Kge = Kge(~ismember(1:size(Kge,1),fixed_dof),~ismember(1:size(Kge,1),fixed_dof));
 
-transient_vector = M*transient_vector.*transient_vector;
-
-time_and_motion_data = fopen('data/single_column/time_and_motion_data.csv','w');
-fprintf(time_and_motion_data,'delta_t,t,u, udot, udotdot\r\n');
+% Assembe load vector
+transient_vector = dof_mass.*transient_vector;
 
 dnew = zeros(total_dof,1);
 vnew = zeros(total_dof,1);
@@ -174,8 +156,6 @@ end
 % BEGIN LOOP
 for delta_t = 1:(size(load,2)-1)
 time = delta_t * h;  
-fprintf(time_and_motion_data,'%g, %g, %g, %g, %g \r\n',delta_t, ((delta_t)*h), dnew(4,1), vnew(4,1), anew(4,1));
-
 forces=zeros(size(nodes,1)*dof_per_node,1);
 
 % load in forces from nodes
@@ -194,7 +174,7 @@ dold=dnew;      vold=vnew;      aold=anew;
 dpred=dold+dt*vold+b1*aold;
 vpred=vold+b2*aold;
 
-% % assemble the force matrix
+% assemble the force matrix
 P= transient_vector.*load(delta_t+1)-C*vpred-Kg*dpred;
 
 % remove rows and columns for fixed dof
@@ -202,7 +182,7 @@ P=P(~ismember(1:total_dof,fixed_dof),1);
 dpred=dpred(~ismember(1:total_dof,fixed_dof),1);
 vpred=vpred(~ismember(1:total_dof,fixed_dof),1);
 
-% % solve the displacements
+% solve the displacements
 anew=Kge\P;
 dnew=dpred+b4*anew;  
 vnew=vpred+b3*anew;
@@ -228,34 +208,65 @@ for e = 1:size(elements,1)
     [L,theta] = getElementLengthAndAngle(e,elements,nodes);
     [T,Tt] = getTransformationMatrix(theta);
     Ke_dash = getElementStiffnessMatrix(e,A,E,I,L);
-    ED_column = node_displacements(dof);
-    ED_row = reshape(ED_column,1,size(ED_column,1));
-    element_displacements(e,1:2*dof_per_node) = ED_row;
-    ED_dash_column = T*ED_column;
-    ED_dash_row = reshape(ED_dash_column,1,size(ED_dash_column,1));
-    element_local_displacements(e,1:2*dof_per_node) = ED_dash_row;
-    element_loads(e,1:2*dof_per_node) = Ke_dash*ED_dash_column - reshape(elements(e,4:9),2*dof_per_node,1);
-    load_conversion_matrix = [1 1 -1 1 -1 1];
-    element_loads(e,1:2*dof_per_node) = element_loads(e,1:2*dof_per_node).*load_conversion_matrix;
+    Ke = Tt*Ke_dash*T;
+    element_loads(e,1:2*dof_per_node) = Ke_dash*node_displacements(dof,1);
+%     ED_column = node_displacements(dof);
+%     ED_row = reshape(ED_column,1,size(ED_column,1));
+%     element_displacements(e,1:2*dof_per_node) = ED_row;
+%     ED_dash_column = T*ED_column;
+%     ED_dash_row = reshape(ED_dash_column,1,size(ED_dash_column,1));
+%     element_local_displacements(e,1:2*dof_per_node) = ED_dash_row;
+%     element_loads(e,1:2*dof_per_node) = Ke_dash*ED_dash_column - reshape(elements(e,4:9),2*dof_per_node,1);
+%     load_conversion_matrix = [1 1 -1 1 -1 1];
+%     element_loads(e,1:2*dof_per_node) = element_loads(e,1:2*dof_per_node).*load_conversion_matrix;
     element_results{e,1}(:,delta_t) = element_loads(e,:);
 end
-
 node_results(:,delta_t) = node_displacements;
 
 end
 
-figure
-X = 0:0.02:((size(load,2)-2)*0.02);
-plot(X,node_results(45,:))
-title('Displacement at node 45');
-xlabel('Time (s)');
-ylabel('Displacement (m)');
+% figure
+% plot(Time,node_results(dof_of_interest,:))
+% title(['Displacement at dof ',num2str(dof_of_interest)]);
+% xlabel('Time (s)');
+% ylabel('Displacement (m)');
 
 figure
-plot(X,element_results{71,1}(3,:))
-title('Moment on element 71');
-xlabel('Time (s)');
-ylabel('Moment (Nm)');
+subplot(2,3,1);
+plot(Time,element_results{element_of_interest,1}(1,:))
+title('N1')
+xlabel('t')
+ylabel('N')
+
+subplot(2,3,2);
+plot(Time,element_results{element_of_interest,1}(2,:))
+title('V1')
+xlabel('t')
+ylabel('N')
+
+subplot(2,3,3);
+plot(Time,element_results{element_of_interest,1}(3,:))
+title('M1')
+xlabel('t')
+ylabel('Nm')
+
+subplot(2,3,4);
+plot(Time,element_results{element_of_interest,1}(4,:))
+title('N2')
+xlabel('t')
+ylabel('N')
+
+subplot(2,3,5);
+plot(Time,element_results{element_of_interest,1}(5,:))
+title('V2')
+xlabel('t')
+ylabel('N')
+
+subplot(2,3,6);
+plot(Time,element_results{element_of_interest,1}(6,:))
+title('M2')
+xlabel('t')
+ylabel('Nm')
 
 % FUNCTION SPACE
 
