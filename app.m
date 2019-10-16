@@ -4,23 +4,23 @@ clc, clear, close
 % READ INPUT
 
 % 2D Frame
-% model_2D_8_story_frame
-% Northridge_earthquake
-% dof_of_interest = 45*3-1;
-% element_of_interest = 1;
-% load_of_interest = 1;
-% h = 0.02;
-% Time = 0:h:((size(load,2)-2)*h);
-% transient_direction = [0 1 0];
+model_2D_8_story_frame
+Northridge_earthquake
+node_of_interest = 45;
+element_of_interest = 1;
+load_of_interest = 1;
+h = 0.02;
+Time = 0:h:((size(load,2)-2)*h);
+transient_direction = [0 1 0];
 
 % Single Column
-single_column
-calfem_test_data
-dof_of_interest = 4;
-element_of_interest = 1;
-h = 0.001;
-Time = 0:h:((size(load,2)-2)*h);
-transient_direction = [1 0 0];
+% single_column
+% calfem_test_data
+% node_of_interest = 2;
+% element_of_interest = 1;
+% h = 0.001;
+% Time = 0:h:((size(load,2)-2)*h);
+% transient_direction = [1 0 0];
 
 % form column vectors of element properties
 E = elements(1:end,10); 
@@ -208,64 +208,76 @@ for e = 1:size(elements,1)
     [L,theta] = getElementLengthAndAngle(e,elements,nodes);
     [T,Tt] = getTransformationMatrix(theta);
     Ke_dash = getElementStiffnessMatrix(e,A,E,I,L);
-    Ke = Tt*Ke_dash*T;
-    element_loads(e,1:2*dof_per_node) = Ke_dash*node_displacements(dof,1);
-%     ED_column = node_displacements(dof);
-%     ED_row = reshape(ED_column,1,size(ED_column,1));
-%     element_displacements(e,1:2*dof_per_node) = ED_row;
-%     ED_dash_column = T*ED_column;
-%     ED_dash_row = reshape(ED_dash_column,1,size(ED_dash_column,1));
-%     element_local_displacements(e,1:2*dof_per_node) = ED_dash_row;
-%     element_loads(e,1:2*dof_per_node) = Ke_dash*ED_dash_column - reshape(elements(e,4:9),2*dof_per_node,1);
-%     load_conversion_matrix = [1 1 -1 1 -1 1];
-%     element_loads(e,1:2*dof_per_node) = element_loads(e,1:2*dof_per_node).*load_conversion_matrix;
+    ED_column = node_displacements(dof);
+    ED_row = reshape(ED_column,1,size(ED_column,1));
+    element_displacements(e,1:2*dof_per_node) = ED_row;
+    ED_dash_column = T*ED_column;
+    ED_dash_row = reshape(ED_dash_column,1,size(ED_dash_column,1));
+    element_local_displacements(e,1:2*dof_per_node) = ED_dash_row;
+    element_loads(e,1:2*dof_per_node) = Ke_dash*ED_dash_column - reshape(elements(e,4:9),2*dof_per_node,1);
+    load_conversion_matrix = [1 1 -1 1 -1 1];
+    element_loads(e,1:2*dof_per_node) = element_loads(e,1:2*dof_per_node).*load_conversion_matrix;
     element_results{e,1}(:,delta_t) = element_loads(e,:);
 end
 node_results(:,delta_t) = node_displacements;
 
 end
 
-% figure
-% plot(Time,node_results(dof_of_interest,:))
-% title(['Displacement at dof ',num2str(dof_of_interest)]);
-% xlabel('Time (s)');
-% ylabel('Displacement (m)');
+% PLOT NODE DISPLACEMENTS
+figure('Name','Results','position',[0,0,1500,700]);
+subplot(3,3,1)
+plot(Time,node_results(node_of_interest*dof_per_node-2,:))
+title(['Node ',num2str(node_of_interest),' X']);
+xlabel('t(s)');
+ylabel('d(m)');
 
-figure
-subplot(2,3,1);
+subplot(3,3,2)
+plot(Time,node_results(node_of_interest*dof_per_node-1,:))
+title(['Node ',num2str(node_of_interest),' Y']);
+xlabel('t(s)');
+ylabel('d(m)');
+
+subplot(3,3,3)
+plot(Time,node_results(node_of_interest*dof_per_node,:))
+title(['Node ',num2str(node_of_interest),' Z']);
+xlabel('t(s)');
+ylabel('r(rad)');
+
+% PLOT ELEMENT FORCES
+subplot(3,3,4);
 plot(Time,element_results{element_of_interest,1}(1,:))
-title('N1')
-xlabel('t')
+title(['Element ',num2str(element_of_interest),' N1'])
+xlabel('t(s)')
 ylabel('N')
 
-subplot(2,3,2);
+subplot(3,3,5);
 plot(Time,element_results{element_of_interest,1}(2,:))
-title('V1')
-xlabel('t')
+title(['Element ',num2str(element_of_interest),' V1'])
+xlabel('t(s)')
 ylabel('N')
 
-subplot(2,3,3);
+subplot(3,3,6);
 plot(Time,element_results{element_of_interest,1}(3,:))
-title('M1')
-xlabel('t')
+title(['Element ',num2str(element_of_interest),' M1'])
+xlabel('t(s)')
 ylabel('Nm')
 
-subplot(2,3,4);
+subplot(3,3,7);
 plot(Time,element_results{element_of_interest,1}(4,:))
-title('N2')
-xlabel('t')
+title(['Element ',num2str(element_of_interest),' N2'])
+xlabel('t(s)')
 ylabel('N')
 
-subplot(2,3,5);
+subplot(3,3,8);
 plot(Time,element_results{element_of_interest,1}(5,:))
-title('V2')
-xlabel('t')
+title(['Element ',num2str(element_of_interest),' V2'])
+xlabel('t(s)')
 ylabel('N')
 
-subplot(2,3,6);
+subplot(3,3,9);
 plot(Time,element_results{element_of_interest,1}(6,:))
-title('M2')
-xlabel('t')
+title(['Element ',num2str(element_of_interest),' M2'])
+xlabel('t(s)')
 ylabel('Nm')
 
 % FUNCTION SPACE
