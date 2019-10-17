@@ -223,6 +223,9 @@ node_results(:,delta_t) = node_displacements;
 
 end
 
+csvwrite('node_results.csv',node_results);
+csvwrite('element_results.csv',element_results);
+
 % PLOT NODE DISPLACEMENTS
 figure('Name','Results','position',[0,0,1500,700]);
 subplot(3,3,1)

@@ -2627,11 +2627,11 @@ Acceleration=[0	-3.004
 52.48	1.975];
 
 Time=Acceleration(:,1);
-Acceleration=Acceleration(:,2);
+Acceleration=Acceleration(:,2)*1e-2;
 
-plot(Time,Acceleration)
-title('NorthRidge Earthquake')
-xlabel('Time(Sec)')
-ylabel('Acceleration(cm/sec^2)')
+% plot(Time,Acceleration)
+% title('NorthRidge Earthquake')
+% xlabel('Time(Sec)')
+% ylabel('Acceleration(cm/sec^2)')
 
 
