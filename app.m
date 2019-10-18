@@ -234,25 +234,25 @@ sap_results=csvread('node_displacements_sap_transformed_new.csv');
 
 figure('Name','Results','position',[0,0,1500,700]);
 subplot(3,3,1)
-col1=Time(1:3002)
-col2=sap_results(node_of_interest_sap*dof_per_node-2,:)
-x1 = plot(col1,col2)
+col1=Time(1:3002);
+col2=sap_results(node_of_interest_sap*dof_per_node-2,:);
+x1 = plot(col1,col2);
 title(['Node ',num2str(node_of_interest),'X']);
 xlabel('t(s)');
 ylabel('d(m)');
 
 subplot(3,3,2)
-col11=Time(1:3002)
-col22=sap_results(node_of_interest_sap*dof_per_node-1,:)
-y1 = plot(col11,col22)
+col11=Time(1:3002);
+col22=sap_results(node_of_interest_sap*dof_per_node-1,:);
+y1 = plot(col11,col22);
 title(['Node ',num2str(node_of_interest),'Y']);
 xlabel('t(s)');
 ylabel('d(m)');
 
 subplot(3,3,3)
-col111=Time(1:3002)
-col222=sap_results(node_of_interest_sap*dof_per_node,:)
-y1 = plot(col111,col222)
+col111=Time(1:3002);
+col222=sap_results(node_of_interest_sap*dof_per_node,:);
+y1 = plot(col111,col222);
 title(['Node ',num2str(node_of_interest),'Z']);
 xlabel('t(s)');
 ylabel('r(rad)');
@@ -262,13 +262,13 @@ ylabel('r(rad)');
 % PLOT NODE DISPLACEMENTS
 figure('Name','Results','position',[0,0,1500,700]);
 subplot(3,3,1)
-x2 = plot(Time,node_results(node_of_interest*dof_per_node-2,:))
+x2 = plot(Time,node_results(node_of_interest*dof_per_node-2,:));
 title(['Node ',num2str(node_of_interest),' X']);
 xlabel('t(s)');
 ylabel('d(m)');
 
 subplot(3,3,2)
-y2 = plot(Time,node_results(node_of_interest*dof_per_node-1,:))
+y2 = plot(Time,node_results(node_of_interest*dof_per_node-1,:));
 title(['Node ',num2str(node_of_interest),' Y']);
 xlabel('t(s)');
 ylabel('d(m)');
@@ -318,16 +318,16 @@ ylabel('Nm')
 
 %Overlay results
 
-figure
-subplot(3,3,1);
-x = Time(1:3002)
-plot(x,col22,x,(node_results(node_of_interest*dof_per_node-2,:)))
-title(['Comparison_of_Results  ',num2str(node_of_interest),'X'])
-
-subplot(3,3,2);
-x = Time(1:3002)
-plot(x,col1,x,(node_results(node_of_interest*dof_per_node-1,:)))
-title({'Comparison_of_Results  ',num2str(node_of_interest),'Y'})
+% figure
+% subplot(3,3,1);
+% x = Time(1:3002);
+% plot(x,col22,x,(node_results(node_of_interest*dof_per_node-2,:)))
+% title(['Comparison_of_Results  ',num2str(node_of_interest),'X'])
+% 
+% subplot(3,3,2);
+% x = Time(1:3002);
+% plot(x,col1,x,(node_results(node_of_interest*dof_per_node-1,:)))
+% title({'Comparison_of_Results  ',num2str(node_of_interest),'Y'})
 
 
 
