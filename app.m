@@ -6,8 +6,9 @@ clc, clear, close
 % 2D Frame
 model_2D_8_story_frame
 Northridge_earthquake
-node_of_interest = 45;
-element_of_interest = 1;
+node_of_interest = 44;
+node_of_interest_sap = 36;
+element_of_interest = 56;
 load_of_interest = 1;
 h = 0.02;
 Time = 0:h:((size(load,2)-2)*h);
@@ -226,16 +227,48 @@ end
 csvwrite('node_results.csv',node_results);
 csvwrite('element_results.csv',element_results);
 
+%SAP - node displacement results
+sap_results=csvread('node_displacements_sap_transformed_new.csv');
+
+%Plotting interest node using SAP results
+
+figure('Name','Results','position',[0,0,1500,700]);
+subplot(3,3,1)
+col1=Time(1:3002)
+col2=sap_results(node_of_interest_sap*dof_per_node-2,:)
+x1 = plot(col1,col2)
+title(['Node ',num2str(node_of_interest),'X']);
+xlabel('t(s)');
+ylabel('d(m)');
+
+subplot(3,3,2)
+col11=Time(1:3002)
+col22=sap_results(node_of_interest_sap*dof_per_node-1,:)
+y1 = plot(col11,col22)
+title(['Node ',num2str(node_of_interest),'Y']);
+xlabel('t(s)');
+ylabel('d(m)');
+
+subplot(3,3,3)
+col111=Time(1:3002)
+col222=sap_results(node_of_interest_sap*dof_per_node,:)
+y1 = plot(col111,col222)
+title(['Node ',num2str(node_of_interest),'Z']);
+xlabel('t(s)');
+ylabel('r(rad)');
+
+
+
 % PLOT NODE DISPLACEMENTS
 figure('Name','Results','position',[0,0,1500,700]);
 subplot(3,3,1)
-plot(Time,node_results(node_of_interest*dof_per_node-2,:))
+x2 = plot(Time,node_results(node_of_interest*dof_per_node-2,:))
 title(['Node ',num2str(node_of_interest),' X']);
 xlabel('t(s)');
 ylabel('d(m)');
 
 subplot(3,3,2)
-plot(Time,node_results(node_of_interest*dof_per_node-1,:))
+y2 = plot(Time,node_results(node_of_interest*dof_per_node-1,:))
 title(['Node ',num2str(node_of_interest),' Y']);
 xlabel('t(s)');
 ylabel('d(m)');
@@ -282,6 +315,22 @@ plot(Time,element_results{element_of_interest,1}(6,:))
 title(['Element ',num2str(element_of_interest),' M2'])
 xlabel('t(s)')
 ylabel('Nm')
+
+%Overlay results
+
+figure
+subplot(3,3,1);
+x = Time(1:3002)
+plot(x,col22,x,(node_results(node_of_interest*dof_per_node-2,:)))
+title(['Comparison_of_Results  ',num2str(node_of_interest),'X'])
+
+subplot(3,3,2);
+x = Time(1:3002)
+plot(x,col1,x,(node_results(node_of_interest*dof_per_node-1,:)))
+title({'Comparison_of_Results  ',num2str(node_of_interest),'Y'})
+
+
+
 
 % FUNCTION SPACE
 
